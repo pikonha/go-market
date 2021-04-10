@@ -7,9 +7,9 @@ import (
 )
 
 type Writer interface {
-	Delete(id int) (*Product, error)
-	Store(*Product) (*Product, error)
-	Update(*Product) (*Product, error)
+	Delete(id int) error
+	Store(*Product) error
+	Update(*Product) error
 }
 
 type Reader interface {
@@ -69,14 +69,29 @@ func (s *Service) Get(id int) (*Product, error) {
 	return &product, nil
 }
 
-func (s *Service) Delete(id int) (*Product, error) {
-	return nil, nil
+func (s *Service) Delete(id int) error {
+	return nil
 }
 
-func (s *Service) Store(*Product) (*Product, error) {
-	return nil, nil
+func (s *Service) Store(product *Product) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare("insert into products(id, name, price,type) values (?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(&product.ID, &product.Name, &product.Price, &product.Type)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
-func (s *Service) Update(*Product) (*Product, error) {
-	return nil, nil
+func (s *Service) Update(*Product) error {
+	return nil
 }
