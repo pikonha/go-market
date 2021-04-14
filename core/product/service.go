@@ -107,6 +107,21 @@ func (s *Service) Store(product *Product) error {
 	return nil
 }
 
-func (s *Service) Update(*Product) error {
+func (s *Service) Update(product *Product) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare("update products set name=?, price=?, type=? where id=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(&product.Name, &product.Price, &product.Type, &product.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
 	return nil
 }
