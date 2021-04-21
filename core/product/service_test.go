@@ -39,13 +39,9 @@ func TestStore(t *testing.T) {
 		t.Fatalf("Erro ao limpar banco de dados %s", err.Error())
 	}
 	service := product.NewService(db)
-	err = service.Store(p)
+	saved, err := service.Store(p)
 	if err != nil {
 		t.Fatalf("Erro ao inserir produto %s", err.Error())
-	}
-	saved, err := service.Get(p.ID)
-	if err != nil {
-		t.Fatalf("Erro ao buscar produto %s", err.Error())
 	}
 	if saved.ID != p.ID {
 		t.Errorf("Dados inválidos. Esperando ID: %d, recebido: %d", p.ID, saved.ID)
@@ -62,12 +58,6 @@ func TestStore(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	p := &product.Product{
-		ID:    1,
-		Name:  "product",
-		Price: 10.5,
-		Type:  product.ProductType(product.Food),
-	}
 	db, err := sql.Open("sqlite3", "../../data/product.db")
 	if err != nil {
 		t.Fatalf("Erro ao conectar ao banco de dados %s", err.Error())
@@ -78,59 +68,63 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("Erro ao limpar banco de dados %s", err.Error())
 	}
 	service := product.NewService(db)
-	err = service.Store(p)
+
+	p := &product.Product{
+		Name:  "p1",
+		Price: 10.5,
+		Type:  product.ProductType(product.Food),
+	}
+	_, err = service.Store(p)
 	if err != nil {
 		t.Fatalf("Erro ao inserir produto %s", err.Error())
 	}
-	updated := &product.Product{
-		ID:    1,
-		Name:  "p2",
-		Price: 20,
-		Type:  product.ProductType(product.Toy),
-	}
-	err = service.Update(updated)
+
+	p.Name = "p2"
+	p.Price = 20
+	p.Type = product.ProductType(product.Toy)
+
+	saved, err := service.Update(p)
 	if err != nil {
 		t.Fatalf("Erro ao atualizar produto %s", err.Error())
 	}
-	saved, err := service.Get(p.ID)
-	if err != nil {
-		t.Fatalf("Erro ao buscar produto %s", err.Error())
+	if saved.Name != p.Name {
+		t.Errorf("Dados inválidos. Esperando Name: %s, recebido: %s", p.Name, saved.Name)
 	}
-	if saved.ID != updated.ID {
-		t.Errorf("Dados inválidos. Esperando ID: %d, recebido: %d", updated.ID, saved.ID)
+	if saved.Price != p.Price {
+		t.Errorf("Dados inválidos. Esperando Price: %f, recebido: %f", p.Price, saved.Price)
 	}
-	if saved.Name != updated.Name {
-		t.Errorf("Dados inválidos. Esperando Name: %s, recebido: %s", updated.Name, saved.Name)
-	}
-	if saved.Price != updated.Price {
-		t.Errorf("Dados inválidos. Esperando Price: %f, recebido: %f", updated.Price, saved.Price)
-	}
-	if saved.Type != updated.Type {
-		t.Errorf("Dados inválidos. Esperando Type: %s, recebido: %s", updated.Type.String(), saved.Type.String())
+	if saved.Type != p.Type {
+		t.Errorf("Dados inválidos. Esperando Type: %s, recebido: %s", p.Type.String(), saved.Type.String())
 	}
 }
 
 func TestDelete(t *testing.T) {
-	p := &product.Product{
-		ID:    1,
-		Name:  "product",
-		Price: 50.4,
-		Type:  product.ProductType(product.Electronic),
-	}
+
 	db, err := sql.Open("sqlite3", "../../data/product.db")
 	clearDb(db)
 	if err != nil {
 		t.Fatalf("Erro ao limpar banco de dados %s", err.Error())
 	}
 	service := product.NewService(db)
-	err = service.Store(p)
+
+	p := &product.Product{
+		Name:  "product",
+		Price: 50.4,
+		Type:  product.ProductType(product.Electronic),
+	}
+	_, err = service.Store(p)
 	if err != nil {
 		t.Fatalf("Erro ao inserir produto %s", err.Error())
 	}
-	err = service.Delete(p.ID)
+
+	deleted, err := service.Delete(p.ID)
 	if err != nil {
 		t.Fatalf("Erro ao deletar produto %s", err.Error())
 	}
+	if deleted.ID != p.ID {
+		t.Fatalf("Erro ao deletar produto %d", p.ID)
+	}
+
 	saved, _ := service.Get(p.ID)
 	if saved != nil {
 		t.Fatalf("Erro ao deletar produto %d", p.ID)
@@ -138,19 +132,17 @@ func TestDelete(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	p := &product.Product{
-		ID:    1,
-		Name:  "product",
-		Price: 50.4,
-		Type:  product.ProductType(product.Electronic),
-	}
 	db, err := sql.Open("sqlite3", "../../data/product.db")
 	clearDb(db)
 	if err != nil {
 		t.Fatalf("Erro ao limpar banco de dados %s", err.Error())
 	}
 	service := product.NewService(db)
-	err = service.Store(p)
+	p, err := service.Store(&product.Product{
+		Name:  "product",
+		Price: 50.4,
+		Type:  product.ProductType(product.Electronic),
+	})
 	if err != nil {
 		t.Fatalf("Erro ao inserir produto %s", err.Error())
 	}
@@ -163,13 +155,11 @@ func TestGet(t *testing.T) {
 func TestGetAll(t *testing.T) {
 	ps := []*product.Product{
 		{
-			ID:    1,
 			Name:  "product",
 			Price: 50.4,
 			Type:  product.ProductType(product.Electronic),
 		},
 		{
-			ID:    2,
 			Name:  "product",
 			Price: 100.2,
 			Type:  product.ProductType(product.Electronic),
@@ -183,7 +173,7 @@ func TestGetAll(t *testing.T) {
 	service := product.NewService(db)
 
 	for _, p := range ps {
-		err = service.Store(p)
+		_, err = service.Store(p)
 		if err != nil {
 			t.Fatalf("Erro ao inserir produto %s", err.Error())
 		}

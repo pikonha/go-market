@@ -7,9 +7,9 @@ import (
 )
 
 type Writer interface {
-	Delete(id int) error
-	Store(*Product) error
-	Update(*Product) error
+	Delete(id int) (*Product, error)
+	Store(*Product) (*Product, error)
+	Update(*Product) (*Product, error)
 }
 
 type Reader interface {
@@ -69,59 +69,82 @@ func (s *Service) Get(id int) (*Product, error) {
 	return &product, nil
 }
 
-func (s *Service) Delete(id int) error {
+func (s *Service) Delete(id int) (*Product, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	product, err := s.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
 	stmt, err := tx.Prepare("delete from products where id = ?")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(&id)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 	tx.Commit()
-	return nil
+	return product, nil
 }
 
-func (s *Service) Store(product *Product) error {
+func (s *Service) Store(product *Product) (*Product, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	stmt, err := tx.Prepare("insert into products(id, name, price,type) values (?,?,?,?)")
+	stmt, err := tx.Prepare("insert into products(name, price,type) values (?,?,?)")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(&product.ID, &product.Name, &product.Price, &product.Type)
+	result, err := stmt.Exec(&product.Name, &product.Price, &product.Type)
+
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
+
+	id, err := result.LastInsertId()
+	product.ID = int(id)
+
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	tx.Commit()
-	return nil
+
+	return product, nil
 }
 
-func (s *Service) Update(product *Product) error {
+func (s *Service) Update(product *Product) (*Product, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	stmt, err := tx.Prepare("update products set name=?, price=?, type=? where id=?")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(&product.Name, &product.Price, &product.Type, &product.ID)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
+
 	tx.Commit()
-	return nil
+	updated, err := s.Get(product.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
