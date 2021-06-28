@@ -3,23 +3,15 @@ package product
 import (
 	"database/sql"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
-type Writer interface {
-	Delete(id int) (*Product, error)
-	Store(*Product) (*Product, error)
-	Update(*Product) (*Product, error)
-}
-
-type Reader interface {
+type UseCase interface {
+	Delete(id int) error
+	Store(*Product) error
+	Update(*Product) error
 	GetAll() ([]*Product, error)
 	Get(id int) (*Product, error)
-}
-
-type UseCase interface {
-	Writer
-	Reader
 }
 
 type Service struct {
@@ -69,82 +61,69 @@ func (s *Service) Get(id int) (*Product, error) {
 	return &product, nil
 }
 
-func (s *Service) Delete(id int) (*Product, error) {
+func (s *Service) Delete(id int) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return nil, err
-	}
-
-	product, err := s.Get(id)
-	if err != nil {
-		return nil, err
+		return err
 	}
 
 	stmt, err := tx.Prepare("delete from products where id = ?")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(&id)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return err
 	}
 	tx.Commit()
-	return product, nil
+	return nil
 }
 
-func (s *Service) Store(product *Product) (*Product, error) {
+func (s *Service) Store(product *Product) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	stmt, err := tx.Prepare("insert into products(name, price,type) values (?,?,?)")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmt.Close()
 	result, err := stmt.Exec(&product.Name, &product.Price, &product.Type)
 
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return err
 	}
-
-	id, err := result.LastInsertId()
-	product.ID = int(id)
 
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return err
 	}
 
 	tx.Commit()
 
-	return product, nil
+	return nil
 }
 
-func (s *Service) Update(product *Product) (*Product, error) {
+func (s *Service) Update(product *Product) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	stmt, err := tx.Prepare("update products set name=?, price=?, type=? where id=?")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(&product.Name, &product.Price, &product.Type, &product.ID)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return err
 	}
 
 	tx.Commit()
-	updated, err := s.Get(product.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return updated, nil
+	return nil
 }
