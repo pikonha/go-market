@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  go-market-db:
+    image: postgres:latest
+    container_name: go-market-db
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: go-market
+    volumes:
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+    ports:
+      - "5432:5432"
+  go-market:
+    build: .
+    container_name: go-market
+    volumes:
+      - .:/go/src
