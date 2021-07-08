@@ -1,4 +1,4 @@
-package product
+package product_domain
 
 type Product struct {
 	ID    int         `json:"id"`
@@ -27,12 +27,3 @@ func (p ProductType) String() string {
 		return "Unknown"
 	}
 }
-
-/*
-CREATE TABLE products (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	name TEXT NOT NULL,
-	price FLOAT NOT NULL,
-	type INTEGER NOT NULL
-);
-*/
