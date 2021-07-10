@@ -9,16 +9,15 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
-	// "github.com/picolloo/go-market/api/handlers"
 	"github.com/picolloo/go-market/product/infra"
-	"github.com/picolloo/go-market/product/use_cases"
-	"github.com/picolloo/go-market/product/domain"
+	"github.com/picolloo/go-market/product/infra/ports"
+	"github.com/picolloo/go-market/product/usecases"
 )
 
 func main() {
 	dbUrl := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", 5432, "docker", "docker", "go-market",
+		"go-market-db", 5432, "docker", "docker", "go-market",
 	)
 
 	db, err := sql.Open("postgres", dbUrl)
@@ -28,24 +27,30 @@ func main() {
 	defer db.Close()
 
   postgresProductRepo := product_infra.NewPostgresProductRepository(db)
-	service := product_use_case.NewService(postgresProductRepo)
+	service := product_usecase.NewService(postgresProductRepo)
 
-  product := product_domain.Product{
-    Name: "toalha",
-    Price: 20.5,
-    Type: product_domain.Food,
-  }
-  service.Store(&product)
+  rootRouter := mux.NewRouter()
 
-	// r := mux.NewRouter()
-	// handlers.MakeProductHandlers(r, service)
-	// http.Handle("/", r)
+  rootRouter.Handle(
+    "/healthcheck",
+    http.HandlerFunc(
+      func(rw http.ResponseWriter, r *http.Request) {
+        rw.Write([]byte("Healthy"))
+      },
+    ))
 
-	// server := &http.Server{
-	// 	Addr: ":9000",
-	// }
 
-	// if err := server.ListenAndServe(); err != nil {
-	// 	log.Fatal(err)
-	// }
+  apiRouter := rootRouter.PathPrefix("/api").Subrouter()
+  product_ports.MakeProductHandlers(apiRouter, service)
+
+  // rootRouter.Use(apiRouter)
+  http.Handle("/", rootRouter)
+
+	server := &http.Server{
+		Addr: ":9000",
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
 }

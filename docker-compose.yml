@@ -6,6 +6,8 @@ services:
     container_name: go-market
     volumes:
       - .:/go/src
+    ports:
+      - "9000:9000"
   go-market-db:
     image: postgres:latest
     container_name: go-market-db
@@ -15,5 +17,6 @@ services:
       POSTGRES_DB: go-market
     volumes:
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+      - ./postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"

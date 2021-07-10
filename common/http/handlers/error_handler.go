@@ -2,7 +2,7 @@ package handlers
 
 import "encoding/json"
 
-func formatJSONerror(message string) []byte {
+func FormatJSONerror(message string) []byte {
 	appError := struct {
 		Message string `json:"message"`
 	}{

@@ -1,4 +1,4 @@
-package handlers
+package product_ports
 
 import (
 	"encoding/json"
@@ -6,41 +6,43 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/picolloo/go-market/core/product"
+	"github.com/picolloo/go-market/common/http/handlers"
+	product_domain "github.com/picolloo/go-market/product/domain"
+	"github.com/picolloo/go-market/product/usecases"
 )
 
-func MakeProductHandlers(r *mux.Router, service product.UseCase) {
-	r.Handle("/v1/products", getProductsHandler(service)).Methods("GET")
-	r.Handle("/v1/products/{id}", getProductHandler(service)).Methods("GET")
-	r.Handle("/v1/products", storeProductsHandler(service)).Methods("POST")
-	r.Handle("/v1/products/{id}", updateProductHandler(service)).Methods("PUT")
-	r.Handle("/v1/products/{id}", deleteProductsHandler(service)).Methods("DELETE")
+func MakeProductHandlers(r *mux.Router, service product_usecase.Service) {
+	r.Handle("/products", getProductsHandler(service)).Methods("GET")
+	r.Handle("/products/{id}", getProductHandler(service)).Methods("GET")
+	r.Handle("/products", storeProductsHandler(service)).Methods("POST")
+	r.Handle("/products/{id}", updateProductHandler(service)).Methods("PUT")
+	r.Handle("/products/{id}", deleteProductsHandler(service)).Methods("DELETE")
 }
 
-func getProductsHandler(service product.UseCase) http.Handler {
+func getProductsHandler(service product_usecase.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		products, err := service.GetAll()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(products)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(formatJSONerror("Error trying to marshal json response"))
+			w.Write(handlers.FormatJSONerror("Error trying to marshal json response"))
 		}
 	})
 }
 
-func storeProductsHandler(service product.UseCase) http.Handler {
+func storeProductsHandler(service product_usecase.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		var p product.Product
+		var p product_domain.Product
 
 		err := json.NewDecoder(r.Body).Decode(&p)
 
@@ -49,64 +51,65 @@ func storeProductsHandler(service product.UseCase) http.Handler {
 			return
 		}
 
-		product, err := service.Store(&p)
+		err = service.Store(&p)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		json.NewEncoder(w).Encode(product)
+		json.NewEncoder(w)
 	})
 }
 
-func deleteProductsHandler(service product.UseCase) http.Handler {
+func deleteProductsHandler(service product_usecase.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application;json")
+		w.Header().Set("Content-Type", "application/json")
 
 		vars := mux.Vars(r)
 		id, _ := strconv.ParseInt(vars["id"], 10, 64)
 
-		product, err := service.Delete(int(id))
+		err := service.Delete(int(id))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 			return
 		}
 
+		var product product_domain.Product
 		err = json.NewEncoder(w).Encode(product)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 		}
 	})
 }
 
-func updateProductHandler(service product.UseCase) http.Handler {
+func updateProductHandler(service product_usecase.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		var product *product.Product
+		var product *product_domain.Product
 		json.NewDecoder(r.Body).Decode(&product)
 
 		vars := mux.Vars(r)
 		id, _ := strconv.ParseInt(vars["id"], 10, 64)
 		product.ID = int(id)
 
-		product, err := service.Update(product)
+		err := service.Update(product)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(product)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 		}
 	})
 }
 
-func getProductHandler(service product.UseCase) http.Handler {
+func getProductHandler(service product_usecase.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -115,14 +118,14 @@ func getProductHandler(service product.UseCase) http.Handler {
 		product, err := service.Get(int(id))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(product)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(formatJSONerror(err.Error()))
+			w.Write(handlers.FormatJSONerror(err.Error()))
 			return
 		}
 	})

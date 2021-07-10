@@ -1,10 +1,11 @@
 package product_infra
 
 import (
-  "database/sql"
+	"database/sql"
 
-  "github.com/picolloo/go-market/product/domain"
-  _ "github.com/lib/pq"
+	_ "github.com/lib/pq"
+
+	"github.com/picolloo/go-market/product/domain"
 )
 
 
@@ -42,7 +43,7 @@ func (self *PostgresProductRepository) GetAll() ([]*product_domain.Product, erro
 func (self *PostgresProductRepository) Get(id int) (*product_domain.Product, error) {
   var product product_domain.Product
 
-  stmt, err := self.db.Prepare("select id, name, price, type from products where id = ?")
+  stmt, err := self.db.Prepare("select id, name, price, type from products where id = $1")
   if err != nil {
     return nil, err
   }
@@ -61,7 +62,7 @@ func (self *PostgresProductRepository) Delete(id int) error {
     return err
   }
 
-  stmt, err := tx.Prepare("delete from products where id = ?")
+  stmt, err := tx.Prepare("delete from products where id = $1")
   if err != nil {
     return err
   }
@@ -80,11 +81,10 @@ func (self *PostgresProductRepository) Store(product *product_domain.Product) er
   if err != nil {
     return err
   }
-  stmt, err := tx.Prepare("insert into products(name, price,type) values (?,?,?)")
+  stmt, err := tx.Prepare("insert into products(name, price,type) values ($1,$2,$3)")
   if err != nil {
     return err
   }
-  defer stmt.Close()
   _, err = stmt.Exec(&product.Name, &product.Price, &product.Type)
 
   if err != nil {
@@ -101,7 +101,7 @@ func (self *PostgresProductRepository) Update(product *product_domain.Product) e
   if err != nil {
     return err
   }
-  stmt, err := tx.Prepare("update products set name=?, price=?, type=? where id=?")
+  stmt, err := tx.Prepare("update products set name=$1, price=$2, type=$3 where id=$4")
   if err != nil {
     return err
   }
